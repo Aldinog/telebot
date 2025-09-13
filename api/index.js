@@ -822,14 +822,46 @@ bot.on('message', async (msg) => {
   }
 });
 
-// Webhook handler untuk Vercel - IMPROVED
+// Webhook handler untuk Vercel - FIXED VERSION
 module.exports = async (req, res) => {
   console.log('Webhook received:', JSON.stringify(req.body, null, 2));
   
   try {
     // Handle update dari Telegram
     if (req.body) {
-      await bot.handleUpdate(req.body);
+      // Process the update manually
+      const update = req.body;
+      
+      // Trigger the appropriate event based on the update type
+      if (update.message) {
+        bot.emit('message', update.message);
+      } else if (update.edited_message) {
+        bot.emit('edited_message', update.edited_message);
+      } else if (update.channel_post) {
+        bot.emit('channel_post', update.channel_post);
+      } else if (update.edited_channel_post) {
+        bot.emit('edited_channel_post', update.edited_channel_post);
+      } else if (update.callback_query) {
+        bot.emit('callback_query', update.callback_query);
+      } else if (update.inline_query) {
+        bot.emit('inline_query', update.inline_query);
+      } else if (update.chosen_inline_result) {
+        bot.emit('chosen_inline_result', update.chosen_inline_result);
+      } else if (update.shipping_query) {
+        bot.emit('shipping_query', update.shipping_query);
+      } else if (update.pre_checkout_query) {
+        bot.emit('pre_checkout_query', update.pre_checkout_query);
+      } else if (update.poll) {
+        bot.emit('poll', update.poll);
+      } else if (update.poll_answer) {
+        bot.emit('poll_answer', update.poll_answer);
+      } else if (update.my_chat_member) {
+        bot.emit('my_chat_member', update.my_chat_member);
+      } else if (update.chat_member) {
+        bot.emit('chat_member', update.chat_member);
+      } else if (update.chat_join_request) {
+        bot.emit('chat_join_request', update.chat_join_request);
+      }
     }
     
     res.status(200).send('OK');
