@@ -2,17 +2,21 @@ const TelegramBot = require('node-telegram-bot-api');
 const fetch = require('node-fetch');
 const Parser = require('rss-parser');
 const cron = require('node-cron');
-const fs = require('fs');
-// Load config
+
+// Load config dari environment variable
 const config = JSON.parse(process.env.CONFIG_JSON || '{}');
-// Initialize bot
+
+// Initialize bot untuk webhook
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+
 // RSS Parser
 const parser = new Parser();
+
 // Helper functions
 const isAllowedGroup = (chatId) => {
   return config.allowedGroupIds.includes(chatId);
 };
+
 const isAdmin = async (chatId, userId) => {
   try {
     const chatMember = await bot.getChatMember(chatId, userId);
@@ -22,6 +26,7 @@ const isAdmin = async (chatId, userId) => {
     return false;
   }
 };
+
 const detectSpam = (text) => {
   if (!text) return false;
   
@@ -51,6 +56,7 @@ const detectSpam = (text) => {
   
   return false;
 };
+
 const muteUser = async (chatId, userId, durationMinutes = 10) => {
   try {
     await bot.restrictChatMember(chatId, userId, {
@@ -62,6 +68,7 @@ const muteUser = async (chatId, userId, durationMinutes = 10) => {
     console.error('Error muting user:', error);
   }
 };
+
 const banUser = async (chatId, userId) => {
   try {
     await bot.banChatMember(chatId, userId);
@@ -70,6 +77,7 @@ const banUser = async (chatId, userId) => {
     console.error('Error banning user:', error);
   }
 };
+
 const deleteMessage = async (chatId, messageId) => {
   try {
     await bot.deleteMessage(chatId, messageId);
@@ -77,10 +85,6 @@ const deleteMessage = async (chatId, messageId) => {
   } catch (error) {
     console.error('Error deleting message:', error);
   }
-};
-// Save config to file
-const saveConfig = () => {
-  fs.writeFileSync('config.json', JSON.stringify(config, null, 2));
 };
 
 // News sending function with multiple fallback URLs for USD
@@ -256,128 +260,6 @@ const sendNewsAlternative = async (chatId) => {
   }
 };
 
-// Test individual USD feeds
-bot.onText(/\/testusd/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  // Multiple USD feed options to test
-  const usdFeeds = [
-    { name: 'Yahoo Finance USD', url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US' },
-    { name: 'FXStreet', url: 'https://www.fxstreet.com/rss/news' },
-    { name: 'DailyFX', url: 'https://www.dailyfx.com/rss' },
-    { name: 'ForexLive', url: 'https://www.forexlive.com/rss' },
-    { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
-    { name: 'CNN Money', url: 'https://rss.cnn.com/rss/money_news_international.rss' },
-    { name: 'Bloomberg', url: 'https://www.bloomberg.com/feed' },
-    { name: 'Investing.com USD', url: 'https://www.investing.com/rss/news_19.rss' }
-  ];
-  
-  let testResults = "🧪 Hasil Test USD Feeds:\n\n";
-  
-  for (const feed of usdFeeds) {
-    try {
-      console.log(`Testing ${feed.name}: ${feed.url}`);
-      await parser.parseURL(feed.url);
-      testResults += `✅ ${feed.name}: BERHASIL\n`;
-    } catch (error) {
-      testResults += `❌ ${feed.name}: GAGAL (${error.message})\n`;
-    }
-  }
-  
-  bot.sendMessage(chatId, testResults);
-});
-
-// Simple news command for testing individual feeds
-bot.onText(/\/testnews (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const feedType = match[1].toLowerCase();
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  const testFeeds = {
-    forex: 'https://www.investing.com/rss/news.rss',
-    saham: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US',
-    usd: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US'
-  };
-  
-  if (!testFeeds[feedType]) {
-    bot.sendMessage(chatId, "❌ Feed type tidak valid. Gunakan: forex, saham, atau usd");
-    return;
-  }
-  
-  try {
-    bot.sendMessage(chatId, `🧪 Menguji ${feedType} feed...`);
-    const feed = await parser.parseURL(testFeeds[feedType]);
-    const news = feed.items.slice(0, 3).map(item => `📰 ${item.title}\n${item.link}`).join('\n\n');
-    await bot.sendMessage(chatId, `✅ ${feedType.toUpperCase()} Feed berhasil:\n\n${news}`, {
-      disable_web_page_preview: true
-    });
-  } catch (error) {
-    bot.sendMessage(chatId, `❌ Gagal mengambil ${feedType} feed: ${error.message}`);
-  }
-});
-
-// Manual news command - UPDATED
-bot.onText(/\/news/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  // Check if group is allowed
-  if (!isAllowedGroup(chatId)) {
-    bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
-    return;
-  }
-  
-  // Try the alternative news function with working feeds
-  await sendNewsAlternative(chatId);
-});
-
-// Add command to check RSS feed configuration
-bot.onText(/\/checkfeeds/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  let feedStatus = "📊 Status RSS Feeds:\n\n";
-  
-  if (config.rssFeeds) {
-    feedStatus += "🔹 Konfigurasi saat ini:\n";
-    feedStatus += `Forex: ${config.rssFeeds.forex || 'Tidak diatur'}\n`;
-    feedStatus += `Saham: ${config.rssFeeds.saham || 'Tidak diatur'}\n`;
-    feedStatus += `USD: ${config.rssFeeds.usd || 'Tidak diatur'}\n\n`;
-  } else {
-    feedStatus += "❌ Tidak ada konfigurasi RSS feeds di config.json\n\n";
-  }
-  
-  feedStatus += "💡 Tips:\n";
-  feedStatus += "• Gunakan /testnews forex untuk mengetes feed forex\n";
-  feedStatus += "• Gunakan /testnews saham untuk mengetes feed saham\n";
-  feedStatus += "• Gunakan /testnews usd untuk mengetes feed USD\n";
-  feedStatus += "• Gunakan /testusd untuk mengetes semua feed USD\n";
-  feedStatus += "• Pastikan URL feed valid dan dapat diakses";
-  
-  bot.sendMessage(chatId, feedStatus);
-});
-
 // Session notification functions (extracted for reuse)
 const sendSydneySession = (chatId) => {
   bot.sendMessage(chatId, 
@@ -458,7 +340,7 @@ bot.onText(/\/help/, (msg) => {
   );
 });
 
-// Allow group command
+// Allow group command - MODIFIED FOR VERCEL
 bot.onText(/\/allowgroup/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -473,12 +355,15 @@ bot.onText(/\/allowgroup/, async (msg) => {
     return;
   }
   
+  // Add to config (in memory only for Vercel)
   config.allowedGroupIds.push(chatId);
-  saveConfig();
-  bot.sendMessage(chatId, `✅ Grup ini telah ditambahkan ke daftar izin!\nID Grup: ${chatId}`);
+  
+  // For persistence in Vercel, you would need to use a database
+  // For now, we'll just acknowledge the addition
+  bot.sendMessage(chatId, `✅ Grup ini telah ditambahkan ke daftar izin!\nID Grup: ${chatId}\n\n⚠️ Catatan: Perubahan hanya disimpan di memori dan akan hilang saat redeploy.`);
 });
 
-// Remove group command
+// Remove group command - MODIFIED FOR VERCEL
 bot.onText(/\/removegroup (.+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -497,8 +382,7 @@ bot.onText(/\/removegroup (.+)/, async (msg, match) => {
   const index = config.allowedGroupIds.indexOf(groupId);
   if (index !== -1) {
     config.allowedGroupIds.splice(index, 1);
-    saveConfig();
-    bot.sendMessage(chatId, `✅ Grup dengan ID ${groupId} telah dihapus dari daftar izin!`);
+    bot.sendMessage(chatId, `✅ Grup dengan ID ${groupId} telah dihapus dari daftar izin!\n\n⚠️ Catatan: Perubahan hanya disimpan di memori dan akan hilang saat redeploy.`);
   } else {
     bot.sendMessage(chatId, `⚠️ Grup dengan ID ${groupId} tidak ada di daftar izin!`);
   }
@@ -528,7 +412,78 @@ bot.onText(/\/groupid/, (msg) => {
   bot.sendMessage(chatId, `🆔 ID Grup ini: ${chatId}`, { parse_mode: 'Markdown' });
 });
 
-// Manual news command
+// Test individual USD feeds
+bot.onText(/\/testusd/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  if (!await isAdmin(chatId, userId)) {
+    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+    return;
+  }
+  
+  // Multiple USD feed options to test
+  const usdFeeds = [
+    { name: 'Yahoo Finance USD', url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US' },
+    { name: 'FXStreet', url: 'https://www.fxstreet.com/rss/news' },
+    { name: 'DailyFX', url: 'https://www.dailyfx.com/rss' },
+    { name: 'ForexLive', url: 'https://www.forexlive.com/rss' },
+    { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
+    { name: 'CNN Money', url: 'https://rss.cnn.com/rss/money_news_international.rss' },
+    { name: 'Bloomberg', url: 'https://www.bloomberg.com/feed' },
+    { name: 'Investing.com USD', url: 'https://www.investing.com/rss/news_19.rss' }
+  ];
+  
+  let testResults = "🧪 Hasil Test USD Feeds:\n\n";
+  
+  for (const feed of usdFeeds) {
+    try {
+      console.log(`Testing ${feed.name}: ${feed.url}`);
+      await parser.parseURL(feed.url);
+      testResults += `✅ ${feed.name}: BERHASIL\n`;
+    } catch (error) {
+      testResults += `❌ ${feed.name}: GAGAL (${error.message})\n`;
+    }
+  }
+  
+  bot.sendMessage(chatId, testResults);
+});
+
+// Simple news command for testing individual feeds
+bot.onText(/\/testnews (.+)/, async (msg, match) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  const feedType = match[1].toLowerCase();
+  
+  if (!await isAdmin(chatId, userId)) {
+    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+    return;
+  }
+  
+  const testFeeds = {
+    forex: 'https://www.investing.com/rss/news.rss',
+    saham: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US',
+    usd: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US'
+  };
+  
+  if (!testFeeds[feedType]) {
+    bot.sendMessage(chatId, "❌ Feed type tidak valid. Gunakan: forex, saham, atau usd");
+    return;
+  }
+  
+  try {
+    bot.sendMessage(chatId, `🧪 Menguji ${feedType} feed...`);
+    const feed = await parser.parseURL(testFeeds[feedType]);
+    const news = feed.items.slice(0, 3).map(item => `📰 ${item.title}\n${item.link}`).join('\n\n');
+    await bot.sendMessage(chatId, `✅ ${feedType.toUpperCase()} Feed berhasil:\n\n${news}`, {
+      disable_web_page_preview: true
+    });
+  } catch (error) {
+    bot.sendMessage(chatId, `❌ Gagal mengambil ${feedType} feed: ${error.message}`);
+  }
+});
+
+// Manual news command - SINGLE VERSION
 bot.onText(/\/news/, async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
@@ -538,8 +493,45 @@ bot.onText(/\/news/, async (msg) => {
     return;
   }
   
-  bot.sendMessage(chatId, "📡 Mengambil berita terkini...");
-  await sendNews(chatId);
+  // Check if group is allowed
+  if (!isAllowedGroup(chatId)) {
+    bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+    return;
+  }
+  
+  // Try the alternative news function with working feeds
+  await sendNewsAlternative(chatId);
+});
+
+// Add command to check RSS feed configuration
+bot.onText(/\/checkfeeds/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+  
+  if (!await isAdmin(chatId, userId)) {
+    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+    return;
+  }
+  
+  let feedStatus = "📊 Status RSS Feeds:\n\n";
+  
+  if (config.rssFeeds) {
+    feedStatus += "🔹 Konfigurasi saat ini:\n";
+    feedStatus += `Forex: ${config.rssFeeds.forex || 'Tidak diatur'}\n`;
+    feedStatus += `Saham: ${config.rssFeeds.saham || 'Tidak diatur'}\n`;
+    feedStatus += `USD: ${config.rssFeeds.usd || 'Tidak diatur'}\n\n`;
+  } else {
+    feedStatus += "❌ Tidak ada konfigurasi RSS feeds di config.json\n\n";
+  }
+  
+  feedStatus += "💡 Tips:\n";
+  feedStatus += "• Gunakan /testnews forex untuk mengetes feed forex\n";
+  feedStatus += "• Gunakan /testnews saham untuk mengetes feed saham\n";
+  feedStatus += "• Gunakan /testnews usd untuk mengetes feed USD\n";
+  feedStatus += "• Gunakan /testusd untuk mengetes semua feed USD\n";
+  feedStatus += "• Pastikan URL feed valid dan dapat diakses";
+  
+  bot.sendMessage(chatId, feedStatus);
 });
 
 // Manual session command - FIXED VERSION
@@ -675,7 +667,7 @@ bot.onText(/\/mute/, async (msg) => {
   
   if (msg.reply_to_message) {
     targetUserId = msg.reply_to_message.from.id;
-    targetUsername = msg.reply_to_message.from.username;
+    targetUsername = msg.reply_to_message.from.username || `User_${msg.reply_to_message.from.id}`;
   } else if (msg.text.includes('@')) {
     const usernameMatch = msg.text.match(/@(\w+)/);
     if (usernameMatch) {
@@ -727,7 +719,7 @@ bot.onText(/\/ban/, async (msg) => {
   
   if (msg.reply_to_message) {
     targetUserId = msg.reply_to_message.from.id;
-    targetUsername = msg.reply_to_message.from.username;
+    targetUsername = msg.reply_to_message.from.username || `User_${msg.reply_to_message.from.id}`;
   } else if (msg.text.includes('@')) {
     const usernameMatch = msg.text.match(/@(\w+)/);
     if (usernameMatch) {
@@ -768,11 +760,11 @@ bot.onText(/\/ban/, async (msg) => {
 bot.on('new_chat_members', async (msg) => {
   const chatId = msg.chat.id;
   
-  
   for (const member of msg.new_chat_members) {
     if (!member.is_bot) {
+      const username = member.username || `User_${member.id}`;
       const welcomeText = 
-        `🎉 Selamat datang di grup kami, @${member.username}!\n\n` +
+        `🎉 Selamat datang di grup kami, @${username}!\n\n` +
         `📌 Silakan baca peraturan grup:\n` +
         `1. Dilarang spam/promosi tanpa izin admin\n` +
         `2. Hormati semua anggota\n` +
@@ -795,7 +787,9 @@ bot.on('message', async (msg) => {
   }
   
   // Check if group is allowed
-  
+  if (!isAllowedGroup(chatId)) {
+    return;
+  }
   
   // Skip if user is admin
   if (await isAdmin(chatId, userId)) {
@@ -816,8 +810,9 @@ bot.on('message', async (msg) => {
     muteUser(chatId, userId);
     
     // Send warning
+    const username = msg.from.username || `User_${msg.from.id}`;
     bot.sendMessage(chatId, 
-      `⚠️ @${msg.from.username} pesan dihapus dan di-mute 10 menit!\n` +
+      `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
       `Alasan: Mengandung promosi/link/spam\n\n` +
       `📌 Peraturan grup:\n` +
       `• Dilarang promosi grup lain\n` +
@@ -827,125 +822,19 @@ bot.on('message', async (msg) => {
   }
 });
 
-// Scheduled tasks
-// Good morning message at 7 AM WIB
-cron.schedule('0 7 * * *', () => {
-  console.log('Sending good morning message...');
-  
-  config.allowedGroupIds.forEach(async (chatId) => {
-    try {
-      bot.sendMessage(chatId, 
-        "🌅 Selamat pagi teman-teman!\n\n" +
-        "Semoga hari ini penuh berkah dan profit yang konsisten! 💰\n\n" +
-        "Jangan lupa untuk selalu mengikuti rencana trading dan manajemen risiko yang baik. 📊"
-      );
-    } catch (error) {
-      console.error('Error sending good morning message:', error);
-    }
-  });
-}, {
-  timezone: 'Asia/Jakarta'
-});
-
-// News at 9 AM WIB
-cron.schedule('0 9 * * *', async () => {
-  console.log('Sending news...');
-  
-  config.allowedGroupIds.forEach(async (chatId) => {
-    try {
-      await sendNews(chatId);
-    } catch (error) {
-      console.error('Error sending news:', error);
-    }
-  });
-}, {
-  timezone: 'Asia/Jakarta'
-});
-
-// Session notifications
-// Sydney session starts at 5 AM WIB
-cron.schedule('0 5 * * *', () => {
-  console.log('Sydney session starts...');
-  
-  config.allowedGroupIds.forEach(async (chatId) => {
-    try {
-      sendSydneySession(chatId);
-    } catch (error) {
-      console.error('Error sending Sydney session notification:', error);
-    }
-  });
-}, {
-  timezone: 'Asia/Jakarta'
-});
-
-// Tokyo session starts at 7 AM WIB
-cron.schedule('0 7 * * *', () => {
-  console.log('Tokyo session starts...');
-  
-  config.allowedGroupIds.forEach(async (chatId) => {
-    try {
-      sendTokyoSession(chatId);
-    } catch (error) {
-      console.error('Error sending Tokyo session notification:', error);
-    }
-  });
-}, {
-  timezone: 'Asia/Jakarta'
-});
-
-// London session starts at 1 PM WIB
-cron.schedule('0 13 * * *', () => {
-  console.log('London session starts...');
-  
-  config.allowedGroupIds.forEach(async (chatId) => {
-    try {
-      sendLondonSession(chatId);
-    } catch (error) {
-      console.error('Error sending London session notification:', error);
-    }
-  });
-}, {
-  timezone: 'Asia/Jakarta'
-});
-
-// New York session starts at 8 PM WIB
-cron.schedule('0 20 * * *', () => {
-  console.log('New York session starts...');
-  
-  config.allowedGroupIds.forEach(async (chatId) => {
-    try {
-      sendNewYorkSession(chatId);
-    } catch (error) {
-      console.error('Error sending New York session notification:', error);
-    }
-  });
-}, {
-  timezone: 'Asia/Jakarta'
-});
-
-// Webhook handler untuk Vercel
+// Webhook handler untuk Vercel - IMPROVED
 module.exports = async (req, res) => {
-  // Untuk setup webhook
-  if (req.query.setup === 'true') {
-    try {
-      const url = `${process.env.VERCEL_URL}/api`;
-      await bot.setWebHook(url);
-      console.log('Webhook set to:', url);
-      return res.status(200).send('Webhook set successfully');
-    } catch (error) {
-      console.error('Error setting webhook:', error);
-      return res.status(500).send('Error setting webhook');
-    }
-  }
-
-  // Handle update dari Telegram
+  console.log('Webhook received:', JSON.stringify(req.body, null, 2));
+  
   try {
+    // Handle update dari Telegram
     if (req.body) {
       await bot.handleUpdate(req.body);
     }
+    
+    res.status(200).send('OK');
   } catch (error) {
     console.error('Error handling update:', error);
+    res.status(500).send('Error');
   }
-  
-  res.status(200).send('OK');
 };
