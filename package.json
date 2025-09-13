@@ -2,9 +2,9 @@
   "name": "telegram-bot",
   "version": "1.0.0",
   "description": "Telegram Trading Bot",
-  "main": "api/main.js",
+  "main": "api/index.js",
   "scripts": {
-    "start": "node api/main.js"
+    "start": "node api/index.js"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.64.0",
