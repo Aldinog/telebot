@@ -40,7 +40,7 @@ const detectSpam = (text, entities = null) => {
   
   const keywordCount = promoKeywords.filter(keyword => lowerText.includes(keyword)).length;
   console.log(`Promo keyword count: ${keywordCount}`);
-  if (keywordCount >= 3) return true; // Reduced threshold from 2 to 3
+  if (keywordCount >= 2) return true; // Reduced threshold from 2 to 3
   
   // Check for suspicious domains
   for (const domain of config.suspiciousDomains) {
@@ -137,6 +137,24 @@ const detectSpam = (text, entities = null) => {
           console.log(`Hidden link domain ${domain} not found in allowed domains list - MARKING AS SPAM`);
           return true;
         }
+
+        // 1. Any hidden link (text_link) is automatically spam
+  if (entities && entities.length > 0) {
+    for (const entity of entities) {
+      if (entity.type === 'text_link' && entity.url) {
+        console.log(`Found hidden link: ${entity.url}`);
+        
+        // Extract domain from the hidden link
+        let domain = entity.url;
+        if (domain.startsWith('http://') || domain.startsWith('https://')) {
+          domain = domain.replace(/^https?:\/\//, '');
+        }
+        if (domain.startsWith('www.')) {
+          domain = domain.substring(4);
+        }
+        domain = domain.split('/')[0];
+        
+        console.log(`Hidden link domain: ${domain}`);
         
         // Also check if it's in suspicious domains
         if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
