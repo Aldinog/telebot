@@ -40,7 +40,7 @@ const detectSpam = (text) => {
   if (urls) {
     for (const url of urls) {
       let domain = url.replace(/^https?:\/\//, '').split('/')[0];
-      domain = domain.replace('www.', '');
+      domain = domain.replace('www.', 't.me', 'wa.me');
       if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
         return true;
       }
