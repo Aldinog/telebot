@@ -5,7 +5,7 @@ const Parser = require('rss-parser');
 const config = JSON.parse(process.env.CONFIG_JSON || '{}');
 // Initialize bot untuk webhook
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-// RSS Parser
+// RSS Parser ---
 const parser = new Parser();
 // Helper functions
 const isAllowedGroup = (chatId) => {
