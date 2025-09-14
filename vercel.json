@@ -11,19 +11,5 @@
       "src": "/api",
       "dest": "api/index.js"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api?task=morning",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api?task=news",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api?task=sessions",
-      "schedule": "0 5,7,13,20 * * *"
-    }
   ]
 }
