@@ -11,5 +11,31 @@
       "src": "/api",
       "dest": "api/index.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api?task=morning",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api?task=news",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api?task=sydney",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api?task=tokyo",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api?task=london",
+      "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api?task=newyork",
+      "schedule": "0 20 * * *"
+    }
   ]
 }
