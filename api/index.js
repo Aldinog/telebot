@@ -826,6 +826,31 @@ module.exports = async (req, res) => {
           return res.status(200).send('New York session notification sent');
       }
     }
+
+    // Di dalam module.exports, tambahkan ini:
+if (req.query.task) {
+  switch (req.query.task) {
+    case 'morning':
+      await sendMorningMessage();
+      return res.status(200).send('Morning message sent');
+    case 'news':
+      await sendScheduledNews();
+      return res.status(200).send('News sent');
+    case 'sessions':
+      // Handle all sessions based on hour parameter
+      const hour = new Date().getHours();
+      if (hour === 5) {
+        await sendSessionNotification('sydney');
+      } else if (hour === 7) {
+        await sendSessionNotification('tokyo');
+      } else if (hour === 13) {
+        await sendSessionNotification('london');
+      } else if (hour === 20) {
+        await sendSessionNotification('newyork');
+      }
+      return res.status(200).send('Session notifications sent');
+  }
+}
     
     res.status(200).send('OK');
   } catch (error) {
