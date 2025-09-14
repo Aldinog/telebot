@@ -20,7 +20,7 @@ const isAdmin = async (chatId, userId) => {
     return false;
   }
 };
-const detectSpam = (text) => {
+const detectSpam = (text, entities = null) => {
   if (!text) return false;
   
   const lowerText = text.toLowerCase();
@@ -34,15 +34,151 @@ const detectSpam = (text) => {
     if (lowerText.includes(domain)) return true;
   }
   
-  // Check for URLs
-  const urlPattern = /https?:\/\/[^\s]+/g;
+  // Check for URLs in text - improved pattern to detect URLs with or without protocol
+  const urlPattern = /(?:https?:\/\/|www\.|t\.me\/|wa\.me\/|telegram\.me\/|bit\.ly\/|goo\.gl\/|discord\.gg\/|facebook\.com\/|instagram\.com\/|twitter\.com\/)[^\s]+/g;
   const urls = text.match(urlPattern);
+  
   if (urls) {
     for (const url of urls) {
-      let domain = url.replace(/^https?:\/\//, '').split('/')[0];
-      domain = domain.replace('www.', 't.me', 'wa.me');
-      if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
+      let domain = url;
+      
+      // Remove protocol if present
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        domain = url.replace(/^https?:\/\//, '');
+      }
+      
+      // Remove www. if present
+      if (domain.startsWith('www.')) {
+        domain = domain.substring(4);
+      }
+      
+      // Extract domain part (before first slash)
+      domain = domain.split('/')[0];
+      
+      console.log(`Detected URL in text: ${url}, extracted domain: ${domain}`);
+      
+      // Check if domain is in suspicious domains
+      if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
+        console.log(`Domain ${domain} found in suspicious domains list`);
         return true;
+      }
+      
+      // Check if domain is NOT in allowed domains
+      if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
+        console.log(`Domain ${domain} not found in allowed domains list`);
+        return true;
+      }
+    }
+  }
+  
+  // Additional check for common domain patterns without any prefix
+  const domainPattern = /\b[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}\b/g;
+  const domains = text.match(domainPattern);
+  
+  if (domains) {
+    for (const domain of domains) {
+      console.log(`Detected domain pattern: ${domain}`);
+      
+      // Check if domain is in suspicious domains
+      if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
+        console.log(`Domain ${domain} found in suspicious domains list`);
+        return true;
+      }
+      
+      // Check if domain is NOT in allowed domains
+      if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
+        console.log(`Domain ${domain} not found in allowed domains list`);
+        return true;
+      }
+    }
+  }
+  
+  // Check for hidden links in message entities (Telegram's clickable text)
+  if (entities && entities.length > 0) {
+    console.log('Checking message entities for hidden links...');
+    
+    for (const entity of entities) {
+      // Check for text_link entities (hidden URLs)
+      if (entity.type === 'text_link' && entity.url) {
+        console.log(`Found hidden link entity: ${entity.url}`);
+        
+        let domain = entity.url;
+        
+        // Remove protocol if present
+        if (domain.startsWith('http://') || domain.startsWith('https://')) {
+          domain = domain.replace(/^https?:\/\//, '');
+        }
+        
+        // Remove www. if present
+        if (domain.startsWith('www.')) {
+          domain = domain.substring(4);
+        }
+        
+        // Extract domain part (before first slash)
+        domain = domain.split('/')[0];
+        
+        console.log(`Hidden link domain extracted: ${domain}`);
+        
+        // Check if domain is in suspicious domains
+        if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
+          console.log(`Hidden link domain ${domain} found in suspicious domains list`);
+          return true;
+        }
+        
+        // Check if domain is NOT in allowed domains
+        if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
+          console.log(`Hidden link domain ${domain} not found in allowed domains list`);
+          return true;
+        }
+      }
+      
+      // Check for url entities (visible URLs)
+      if (entity.type === 'url') {
+        // Extract the URL from the text using entity offset and length
+        const urlText = text.substring(entity.offset, entity.offset + entity.length);
+        console.log(`Found URL entity: ${urlText}`);
+        
+        let domain = urlText;
+        
+        // Remove protocol if present
+        if (domain.startsWith('http://') || domain.startsWith('https://')) {
+          domain = domain.replace(/^https?:\/\//, '');
+        }
+        
+        // Remove www. if present
+        if (domain.startsWith('www.')) {
+          domain = domain.substring(4);
+        }
+        
+        // Extract domain part (before first slash)
+        domain = domain.split('/')[0];
+        
+        console.log(`URL entity domain extracted: ${domain}`);
+        
+        // Check if domain is in suspicious domains
+        if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
+          console.log(`URL entity domain ${domain} found in suspicious domains list`);
+          return true;
+        }
+        
+        // Check if domain is NOT in allowed domains
+        if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
+          console.log(`URL entity domain ${domain} not found in allowed domains list`);
+          return true;
+        }
+      }
+      
+      // Check for mention entities (@username) that might be used for promotion
+      if (entity.type === 'mention') {
+        const mention = text.substring(entity.offset, entity.offset + entity.length);
+        console.log(`Found mention entity: ${mention}`);
+        
+        // Check if mention contains suspicious keywords
+        const mentionText = mention.substring(1); // Remove @ symbol
+        if (config.suspiciousDomains.some(suspicious => mentionText.includes(suspicious))) {
+          console.log(`Mention ${mention} found in suspicious domains list`);
+          return true;
+        }
       }
     }
   }
@@ -695,71 +831,74 @@ async function processMessage(message) {
         break;
     }
   }
-  // Handle spam detection for non-command messages
-  else if (text || caption) {
-    const messageText = text || caption;
+ // Di dalam fungsi processMessage, perbarui bagian deteksi spam:
+// Handle spam detection for non-command messages
+else if (text || caption) {
+  const messageText = text || caption;
+  const messageEntities = message.entities || message.caption_entities || [];
+  
+  console.log(`Checking for spam in message: ${messageText}`);
+  console.log(`Message entities:`, JSON.stringify(messageEntities, null, 2));
+  
+  // Skip if in private chat
+  if (chatId === userId) {
+    console.log(`Skipping spam check for private chat ${chatId}`);
+    return;
+  }
+  
+  // Check if group is allowed
+  if (!isAllowedGroup(chatId)) {
+    console.log(`Skipping spam check for non-allowed group ${chatId}`);
+    return;
+  }
+  
+  // Skip if user is admin
+  const isAdminUser = await isAdmin(chatId, userId);
+  if (isAdminUser) {
+    console.log(`Skipping spam check for admin user ${userId} in chat ${chatId}`);
+    return;
+  }
+  
+  // Check for spam (now includes entities)
+  const isSpam = detectSpam(messageText, messageEntities);
+  console.log(`Spam detection result for message: ${isSpam}`);
+  
+  if (isSpam) {
+    console.log(`Deleting spam message ${message.message_id} from user ${userId} in chat ${chatId}`);
     
-    console.log(`Checking for spam in message: ${messageText}`);
-    
-    // Skip if in private chat
-    if (chatId === userId) {
-      console.log(`Skipping spam check for private chat ${chatId}`);
-      return;
+    // Delete the message
+    try {
+      await deleteMessage(chatId, message.message_id);
+      console.log(`Message ${message.message_id} deleted successfully`);
+    } catch (error) {
+      console.error(`Error deleting message ${message.message_id}:`, error);
     }
     
-    // Check if group is allowed
-    if (!isAllowedGroup(chatId)) {
-      console.log(`Skipping spam check for non-allowed group ${chatId}`);
-      return;
+    // Mute the user for 10 minutes
+    try {
+      await muteUser(chatId, userId);
+      console.log(`User ${userId} muted successfully`);
+    } catch (error) {
+      console.error(`Error muting user ${userId}:`, error);
     }
     
-    // Skip if user is admin
-    const isAdminUser = await isAdmin(chatId, userId);
-    if (isAdminUser) {
-      console.log(`Skipping spam check for admin user ${userId} in chat ${chatId}`);
-      return;
-    }
-    
-    // Check for spam
-    const isSpam = detectSpam(messageText);
-    console.log(`Spam detection result for message: ${isSpam}`);
-    
-    if (isSpam) {
-      console.log(`Deleting spam message ${message.message_id} from user ${userId} in chat ${chatId}`);
-      
-      // Delete the message
-      try {
-        await deleteMessage(chatId, message.message_id);
-        console.log(`Message ${message.message_id} deleted successfully`);
-      } catch (error) {
-        console.error(`Error deleting message ${message.message_id}:`, error);
-      }
-      
-      // Mute the user for 10 minutes
-      try {
-        await muteUser(chatId, userId);
-        console.log(`User ${userId} muted successfully`);
-      } catch (error) {
-        console.error(`Error muting user ${userId}:`, error);
-      }
-      
-      // Send warning
-      const username = message.from.username || `User_${message.from.id}`;
-      try {
-        await bot.sendMessage(chatId, 
-          `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
-          `Alasan: Mengandung promosi/link/spam\n\n` +
-          `📌 Peraturan grup:\n` +
-          `• Dilarang promosi grup lain\n` +
-          `• Dilarang posting link tanpa izin admin\n` +
-          `• Hormati semua anggota grup`
-        );
-        console.log(`Warning message sent to chat ${chatId}`);
-      } catch (error) {
-        console.error(`Error sending warning message:`, error);
-      }
+    // Send warning
+    const username = message.from.username || `User_${message.from.id}`;
+    try {
+      await bot.sendMessage(chatId, 
+        `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
+        `Alasan: Mengandung promosi/link/spam\n\n` +
+        `📌 Peraturan grup:\n` +
+        `• Dilarang promosi grup lain\n` +
+        `• Dilarang posting link tanpa izin admin\n` +
+        `• Hormati semua anggota grup`
+      );
+      console.log(`Warning message sent to chat ${chatId}`);
+    } catch (error) {
+      console.error(`Error sending warning message:`, error);
     }
   }
+ }
 }
 
 // Webhook handler untuk Vercel - FIXED VERSION
