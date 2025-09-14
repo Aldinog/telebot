@@ -25,9 +25,22 @@ const detectSpam = (text, entities = null) => {
   
   const lowerText = text.toLowerCase();
   
-  // Check for promo keywords
-  const keywordCount = config.promoKeywords.filter(keyword => lowerText.includes(keyword)).length;
-  if (keywordCount >= 2) return true;
+  // Check for promo keywords - EXPANDED LIST
+  const promoKeywords = [
+    'promo', 'diskon', 'jual', 'beli', 'harga', 'pembelian', 'order', 'pesan',
+    'contact', 'admin', 'whatsapp', 'wa', 'telegram', 't.me', 'link',
+    'ea', 'robot', 'trading', 'forex', 'profit', 'keuntungan', 'penghasilan',
+    'signal', 'grup', 'join', 'bergabung', 'member', 'premium', 'vip',
+    'gratis', 'free', 'bonus', 'cashback', 'rebate', 'komisi',
+    'broker', 'deposit', 'withdraw', 'wd', 'dp', 'investasi', 'invest',
+    'modal', 'dana', 'uang', 'income', 'menghasilkan', 'cuan',
+    'strategy', 'strategi', 'indikator', 'analisa', 'teknikal', 'fundamental',
+    'akun', 'cent', 'ecn', 'standart', 'bebas broker', 'support semua pair'
+  ];
+  
+  const keywordCount = promoKeywords.filter(keyword => lowerText.includes(keyword)).length;
+  console.log(`Promo keyword count: ${keywordCount}`);
+  if (keywordCount >= 3) return true; // Reduced threshold from 2 to 3
   
   // Check for suspicious domains
   for (const domain of config.suspiciousDomains) {
@@ -98,7 +111,7 @@ const detectSpam = (text, entities = null) => {
     console.log('Checking message entities for hidden links...');
     
     for (const entity of entities) {
-      // Check for text_link entities (hidden URLs)
+      // Check for text_link entities (hidden URLs) - THIS IS THE KEY FIX
       if (entity.type === 'text_link' && entity.url) {
         console.log(`Found hidden link entity: ${entity.url}`);
         
@@ -119,15 +132,15 @@ const detectSpam = (text, entities = null) => {
         
         console.log(`Hidden link domain extracted: ${domain}`);
         
-        // Check if domain is in suspicious domains
-        if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
-          console.log(`Hidden link domain ${domain} found in suspicious domains list`);
+        // ANY hidden link is considered spam unless it's in allowed domains
+        if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
+          console.log(`Hidden link domain ${domain} not found in allowed domains list - MARKING AS SPAM`);
           return true;
         }
         
-        // Check if domain is NOT in allowed domains
-        if (!config.allowedDomains.some(allowed => domain.includes(allowed))) {
-          console.log(`Hidden link domain ${domain} not found in allowed domains list`);
+        // Also check if it's in suspicious domains
+        if (config.suspiciousDomains.some(suspicious => domain.includes(suspicious))) {
+          console.log(`Hidden link domain ${domain} found in suspicious domains list`);
           return true;
         }
       }
@@ -179,10 +192,52 @@ const detectSpam = (text, entities = null) => {
           console.log(`Mention ${mention} found in suspicious domains list`);
           return true;
         }
+        
+        // ANY mention combined with promo keywords is suspicious
+        if (keywordCount >= 1) {
+          console.log(`Mention ${mention} combined with promo keywords - MARKING AS SPAM`);
+          return true;
+        }
+      }
+      
+      // Check for bold, italic, or other formatting that might be used for promotion
+      if (entity.type === 'bold' || entity.type === 'italic') {
+        const formattedText = text.substring(entity.offset, entity.offset + entity.length);
+        console.log(`Found formatted text: ${formattedText}`);
+        
+        // Check if formatted text contains promo keywords
+        if (promoKeywords.some(keyword => formattedText.toLowerCase().includes(keyword))) {
+          console.log(`Formatted text contains promo keywords - MARKING AS SPAM`);
+          return true;
+        }
       }
     }
   }
   
+  // Additional check for common spam patterns
+  const spamPatterns = [
+    /contact\s+(admin|wa|whatsapp|telegram)/i,
+    /hubungi\s+(admin|wa|whatsapp|telegram)/i,
+    /klik\s+(link|di\s+sini)/i,
+    /join\s+(grup|group)/i,
+    /daftar\s+(sekarang|now)/i,
+    /promo(?:si|tion)?/i,
+    /diskon/i,
+    /harga/i,
+    /beli/i,
+    /jual/i,
+    /order/i,
+    /pesan/i
+  ];
+  
+  for (const pattern of spamPatterns) {
+    if (pattern.test(lowerText)) {
+      console.log(`Spam pattern matched: ${pattern}`);
+      return true;
+    }
+  }
+  
+  console.log(`Final spam detection result: false (keyword count: ${keywordCount})`);
   return false;
 };
 const muteUser = async (chatId, userId, durationMinutes = 10) => {
