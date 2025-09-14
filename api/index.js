@@ -433,7 +433,6 @@ async function sendMorningMessage() {
     }
   }
 }
-
 // Fungsi untuk mengirim berita
 async function sendScheduledNews() {
   console.log('Sending scheduled news...');
@@ -447,7 +446,6 @@ async function sendScheduledNews() {
     }
   }
 }
-
 // Fungsi untuk mengirim notifikasi sesi
 async function sendSessionNotification(sessionType) {
   console.log(`Sending ${sessionType} session notification...`);
@@ -494,7 +492,6 @@ async function sendSessionNotification(sessionType) {
     }
   }
 }
-
 // Process message function
 async function processMessage(message) {
   const chatId = message.chat.id;
@@ -831,76 +828,74 @@ async function processMessage(message) {
         break;
     }
   }
- // Di dalam fungsi processMessage, perbarui bagian deteksi spam:
-// Handle spam detection for non-command messages
-else if (text || caption) {
-  const messageText = text || caption;
-  const messageEntities = message.entities || message.caption_entities || [];
-  
-  console.log(`Checking for spam in message: ${messageText}`);
-  console.log(`Message entities:`, JSON.stringify(messageEntities, null, 2));
-  
-  // Skip if in private chat
-  if (chatId === userId) {
-    console.log(`Skipping spam check for private chat ${chatId}`);
-    return;
-  }
-  
-  // Check if group is allowed
-  if (!isAllowedGroup(chatId)) {
-    console.log(`Skipping spam check for non-allowed group ${chatId}`);
-    return;
-  }
-  
-  // Skip if user is admin
-  const isAdminUser = await isAdmin(chatId, userId);
-  if (isAdminUser) {
-    console.log(`Skipping spam check for admin user ${userId} in chat ${chatId}`);
-    return;
-  }
-  
-  // Check for spam (now includes entities)
-  const isSpam = detectSpam(messageText, messageEntities);
-  console.log(`Spam detection result for message: ${isSpam}`);
-  
-  if (isSpam) {
-    console.log(`Deleting spam message ${message.message_id} from user ${userId} in chat ${chatId}`);
+  // Handle spam detection for non-command messages
+  else if (text || caption) {
+    const messageText = text || caption;
+    const messageEntities = message.entities || message.caption_entities || [];
     
-    // Delete the message
-    try {
-      await deleteMessage(chatId, message.message_id);
-      console.log(`Message ${message.message_id} deleted successfully`);
-    } catch (error) {
-      console.error(`Error deleting message ${message.message_id}:`, error);
+    console.log(`Checking for spam in message: ${messageText}`);
+    console.log(`Message entities:`, JSON.stringify(messageEntities, null, 2));
+    
+    // Skip if in private chat
+    if (chatId === userId) {
+      console.log(`Skipping spam check for private chat ${chatId}`);
+      return;
     }
     
-    // Mute the user for 10 minutes
-    try {
-      await muteUser(chatId, userId);
-      console.log(`User ${userId} muted successfully`);
-    } catch (error) {
-      console.error(`Error muting user ${userId}:`, error);
+    // Check if group is allowed
+    if (!isAllowedGroup(chatId)) {
+      console.log(`Skipping spam check for non-allowed group ${chatId}`);
+      return;
     }
     
-    // Send warning
-    const username = message.from.username || `User_${message.from.id}`;
-    try {
-      await bot.sendMessage(chatId, 
-        `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
-        `Alasan: Mengandung promosi/link/spam\n\n` +
-        `📌 Peraturan grup:\n` +
-        `• Dilarang promosi grup lain\n` +
-        `• Dilarang posting link tanpa izin admin\n` +
-        `• Hormati semua anggota grup`
-      );
-      console.log(`Warning message sent to chat ${chatId}`);
-    } catch (error) {
-      console.error(`Error sending warning message:`, error);
+    // Skip if user is admin
+    const isAdminUser = await isAdmin(chatId, userId);
+    if (isAdminUser) {
+      console.log(`Skipping spam check for admin user ${userId} in chat ${chatId}`);
+      return;
+    }
+    
+    // Check for spam (now includes entities)
+    const isSpam = detectSpam(messageText, messageEntities);
+    console.log(`Spam detection result for message: ${isSpam}`);
+    
+    if (isSpam) {
+      console.log(`Deleting spam message ${message.message_id} from user ${userId} in chat ${chatId}`);
+      
+      // Delete the message
+      try {
+        await deleteMessage(chatId, message.message_id);
+        console.log(`Message ${message.message_id} deleted successfully`);
+      } catch (error) {
+        console.error(`Error deleting message ${message.message_id}:`, error);
+      }
+      
+      // Mute the user for 10 minutes
+      try {
+        await muteUser(chatId, userId);
+        console.log(`User ${userId} muted successfully`);
+      } catch (error) {
+        console.error(`Error muting user ${userId}:`, error);
+      }
+      
+      // Send warning
+      const username = message.from.username || `User_${message.from.id}`;
+      try {
+        await bot.sendMessage(chatId, 
+          `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
+          `Alasan: Mengandung promosi/link/spam\n\n` +
+          `📌 Peraturan grup:\n` +
+          `• Dilarang promosi grup lain\n` +
+          `• Dilarang posting link tanpa izin admin\n` +
+          `• Hormati semua anggota grup`
+        );
+        console.log(`Warning message sent to chat ${chatId}`);
+      } catch (error) {
+        console.error(`Error sending warning message:`, error);
+      }
     }
   }
- }
 }
-
 // Webhook handler untuk Vercel - FIXED VERSION
 module.exports = async (req, res) => {
   console.log('Webhook received:', JSON.stringify(req.body, null, 2));
@@ -963,33 +958,21 @@ module.exports = async (req, res) => {
         case 'newyork':
           await sendSessionNotification('newyork');
           return res.status(200).send('New York session notification sent');
+        case 'sessions':
+          // Handle all sessions based on hour parameter
+          const hour = new Date().getHours();
+          if (hour === 5) {
+            await sendSessionNotification('sydney');
+          } else if (hour === 7) {
+            await sendSessionNotification('tokyo');
+          } else if (hour === 13) {
+            await sendSessionNotification('london');
+          } else if (hour === 20) {
+            await sendSessionNotification('newyork');
+          }
+          return res.status(200).send('Session notifications sent');
       }
     }
-
-    // Di dalam module.exports, tambahkan ini:
-if (req.query.task) {
-  switch (req.query.task) {
-    case 'morning':
-      await sendMorningMessage();
-      return res.status(200).send('Morning message sent');
-    case 'news':
-      await sendScheduledNews();
-      return res.status(200).send('News sent');
-    case 'sessions':
-      // Handle all sessions based on hour parameter
-      const hour = new Date().getHours();
-      if (hour === 5) {
-        await sendSessionNotification('sydney');
-      } else if (hour === 7) {
-        await sendSessionNotification('tokyo');
-      } else if (hour === 13) {
-        await sendSessionNotification('london');
-      } else if (hour === 20) {
-        await sendSessionNotification('newyork');
-      }
-      return res.status(200).send('Session notifications sent');
-  }
-}
     
     res.status(200).send('OK');
   } catch (error) {
