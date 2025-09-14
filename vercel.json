@@ -22,20 +22,8 @@
       "schedule": "0 9 * * *"
     },
     {
-      "path": "/api?task=sydney",
-      "schedule": "0 5 * * *"
-    },
-    {
-      "path": "/api?task=tokyo",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api?task=london",
-      "schedule": "0 13 * * *"
-    },
-    {
-      "path": "/api?task=newyork",
-      "schedule": "0 20 * * *"
+      "path": "/api?task=sessions",
+      "schedule": "0 5,7,13,20 * * *"
     }
   ]
 }
