@@ -113,7 +113,6 @@ const detectSpam = (text, entities = null) => {
       // Check for text_link entities (hidden URLs) - THIS IS THE KEY FIX
       if (entity.type === 'text_link' && entity.url) {
         console.log(`Found hidden link entity: ${entity.url}`);
-        return true;
         
         let domain = entity.url;
         
