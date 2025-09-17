@@ -2,17 +2,17 @@ name: Telegram Bot Cronjob
 
 on:
   schedule:
-    # Sesi Sydney (05:00 WIB = 22:00 UTC hari sebelumnya)
+    # Morning (07:00 WIB)
+    - cron: "0 0 * * 1-5"
+    # Sydney (05:00 WIB)
     - cron: "0 22 * * 0-4"
-    # Sesi Tokyo (07:00 WIB = 00:00 UTC)
+    # Tokyo (07:00 WIB)
     - cron: "0 0 * * 1-5"
-    # Sesi London (13:00 WIB = 06:00 UTC)
+    # London (13:00 WIB)
     - cron: "0 6 * * 1-5"
-    # Sesi New York (20:00 WIB = 13:00 UTC)
+    # New York (20:00 WIB)
     - cron: "0 13 * * 1-5"
-    # Morning Message (07:00 WIB = 00:00 UTC)
-    - cron: "0 0 * * 1-5"
-  workflow_dispatch: 
+   
 
 jobs:
   run-cron:
