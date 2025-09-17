@@ -1,0 +1,29 @@
+name: Telegram Bot Cronjob
+
+on:
+  schedule:
+    # Sesi Sydney (05:00 WIB = 22:00 UTC hari sebelumnya)
+    - cron: "0 22 * * 0-4"
+    # Sesi Tokyo (07:00 WIB = 00:00 UTC)
+    - cron: "0 0 * * 1-5"
+    # Sesi London (13:00 WIB = 06:00 UTC)
+    - cron: "0 6 * * 1-5"
+    # Sesi New York (20:00 WIB = 13:00 UTC)
+    - cron: "0 13 * * 1-5"
+    # Morning Message (07:00 WIB = 00:00 UTC)
+    - cron: "0 0 * * 1-5"
+
+jobs:
+  run-cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Sydney Session
+        run: curl "https://telebot-xi-sable.vercel.app/api?task=sydney"
+      - name: Call Tokyo Session
+        run: curl "https://telebot-xi-sable.vercel.app/api?task=tokyo"
+      - name: Call London Session
+        run: curl "https://telebot-xi-sable.vercel.app/api?task=london"
+      - name: Call New York Session
+        run: curl "https://telebot-xi-sable.vercel.app/api?task=newyork"
+      - name: Call Morning Message
+        run: curl "https://telebot-xi-sable.vercel.app/api?task=morning"
