@@ -2,29 +2,48 @@ name: Telegram Bot Cronjob
 
 on:
   schedule:
-    # Morning (07:00 WIB)
+    # Morning message - 07:00 WIB = 00:00 UTC
     - cron: "0 0 * * 1-5"
-    # Sydney (05:00 WIB)
+
+    # Sydney session - 05:00 WIB = 22:00 UTC (hari sebelumnya)
     - cron: "0 22 * * 0-4"
-    # Tokyo (07:00 WIB)
+
+    # Tokyo session - 07:00 WIB = 00:00 UTC
     - cron: "0 0 * * 1-5"
-    # London (13:00 WIB)
+
+    # London session - 13:00 WIB = 06:00 UTC
     - cron: "0 6 * * 1-5"
-    # New York (20:00 WIB)
+
+    # New York session - 20:00 WIB = 13:00 UTC
     - cron: "0 13 * * 1-5"
-   
+
+  workflow_dispatch: # bisa dijalankan manual
+    inputs:
+      task:
+        description: "Task yang mau dijalankan (morning, sydney, tokyo, london, newyork)"
+        required: true
+        default: "morning"
 
 jobs:
-  run-cron:
+  run-task:
     runs-on: ubuntu-latest
     steps:
-      - name: Call Sydney Session
-        run: curl "https://telebot-xi-sable.vercel.app/api?task=sydney"
-      - name: Call Tokyo Session
-        run: curl "https://telebot-xi-sable.vercel.app/api?task=tokyo"
-      - name: Call London Session
-        run: curl "https://telebot-xi-sable.vercel.app/api?task=london"
-      - name: Call New York Session
-        run: curl "https://telebot-xi-sable.vercel.app/api?task=newyork"
-      - name: Call Morning Message
-        run: curl "https://telebot-xi-sable.vercel.app/api?task=morning"
+      - name: Tentukan Task
+        id: set-task
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 0 * * 1-5") echo "task=morning" >> $GITHUB_ENV ;;
+            "0 22 * * 0-4") echo "task=sydney" >> $GITHUB_ENV ;;
+            "0 6 * * 1-5") echo "task=london" >> $GITHUB_ENV ;;
+            "0 13 * * 1-5") echo "task=newyork" >> $GITHUB_ENV ;;
+          esac
+
+          # kalau manual dispatch → pakai input
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "task=${{ github.event.inputs.task }}" >> $GITHUB_ENV
+          fi
+
+      - name: Jalankan Task
+        run: |
+          echo "Menjalankan task: $task"
+          curl "https://telebot-xi-sable.vercel.app/api?task=$task"
