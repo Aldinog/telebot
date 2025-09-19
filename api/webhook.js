@@ -2,7 +2,7 @@ import { Telegraf } from "telegraf";
 import { readDB, writeDB } from "../utils/db.js";
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-const allowedGroupIds = process.env.CONFIG_JSON; // ID grup target
+const GROUP_ID = process.env.GROUP_ID; // ID grup target
 
 // =============== FITUR ADMIN (PRIVATE CHAT) =================
 
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     const db = readDB();
     if (db.savedMessages.length > 0) {
       const random = db.savedMessages[Math.floor(Math.random() * db.savedMessages.length)];
-      await bot.telegram.copyMessage(allowedGroupIds, random.chat_id, random.message_id);
+      await bot.telegram.copyMessage(GROUP_ID, random.chat_id, random.message_id);
     }
     res.status(200).send("✅ Morning message sent");
   } else {
