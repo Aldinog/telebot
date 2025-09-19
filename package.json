@@ -7,9 +7,10 @@
     "start": "node api/index.js"
   },
   "dependencies": {
-    "node-telegram-bot-api": "^0.64.0",
+    "@upstash/redis": "^1.35.3",
+    "node-cron": "^3.0.3",
     "node-fetch": "^2.6.1",
-    "rss-parser": "^3.13.0",
-    "node-cron": "^3.0.3"
+    "node-telegram-bot-api": "^0.64.0",
+    "rss-parser": "^3.13.0"
   }
 }

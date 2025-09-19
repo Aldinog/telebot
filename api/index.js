@@ -1,22 +1,16 @@
 const TelegramBot = require('node-telegram-bot-api');
 const fetch = require('node-fetch');
 const Parser = require('rss-parser');
-const cron = require('node-cron');
-
 // Load config dari environment variable
 const config = JSON.parse(process.env.CONFIG_JSON || '{}');
-
 // Initialize bot untuk webhook
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
-
 // RSS Parser
 const parser = new Parser();
-
 // Helper functions
 const isAllowedGroup = (chatId) => {
   return config.allowedGroupIds.includes(chatId);
 };
-
 const isAdmin = async (chatId, userId) => {
   try {
     const chatMember = await bot.getChatMember(chatId, userId);
@@ -26,7 +20,6 @@ const isAdmin = async (chatId, userId) => {
     return false;
   }
 };
-
 const detectSpam = (text) => {
   if (!text) return false;
   
@@ -56,7 +49,6 @@ const detectSpam = (text) => {
   
   return false;
 };
-
 const muteUser = async (chatId, userId, durationMinutes = 10) => {
   try {
     await bot.restrictChatMember(chatId, userId, {
@@ -68,7 +60,6 @@ const muteUser = async (chatId, userId, durationMinutes = 10) => {
     console.error('Error muting user:', error);
   }
 };
-
 const banUser = async (chatId, userId) => {
   try {
     await bot.banChatMember(chatId, userId);
@@ -77,7 +68,6 @@ const banUser = async (chatId, userId) => {
     console.error('Error banning user:', error);
   }
 };
-
 const deleteMessage = async (chatId, messageId) => {
   try {
     await bot.deleteMessage(chatId, messageId);
@@ -86,7 +76,6 @@ const deleteMessage = async (chatId, messageId) => {
     console.error('Error deleting message:', error);
   }
 };
-
 // News sending function with multiple fallback URLs for USD
 const sendNews = async (chatId) => {
   try {
@@ -181,7 +170,6 @@ const sendNews = async (chatId) => {
     );
   }
 };
-
 // Alternative news function with working feeds
 const sendNewsAlternative = async (chatId) => {
   try {
@@ -190,7 +178,7 @@ const sendNewsAlternative = async (chatId) => {
     // Working RSS feeds (tested and verified)
     const workingFeeds = {
       forex: 'https://www.investing.com/rss/news.rss',
-      saham: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US',
+      saham: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang-en-US',
       // Multiple USD feed options with different sources
       usd: [
         'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US',
@@ -259,7 +247,6 @@ const sendNewsAlternative = async (chatId) => {
     bot.sendMessage(chatId, "❌ Gagal mengambil berita. Silakan coba lagi nanti.");
   }
 };
-
 // Session notification functions (extracted for reuse)
 const sendSydneySession = (chatId) => {
   bot.sendMessage(chatId, 
@@ -269,7 +256,6 @@ const sendSydneySession = (chatId) => {
     "Selamat bertrading! 🚀"
   );
 };
-
 const sendTokyoSession = (chatId) => {
   bot.sendMessage(chatId, 
     "🇯🇵 Sesi Tokyo Dimulai!\n\n" +
@@ -278,7 +264,6 @@ const sendTokyoSession = (chatId) => {
     "Selamat bertrading! 🚀"
   );
 };
-
 const sendLondonSession = (chatId) => {
   bot.sendMessage(chatId, 
     "🇬🇧 Sesi London Dimulai!\n\n" +
@@ -287,7 +272,6 @@ const sendLondonSession = (chatId) => {
     "Selamat bertrading! 🚀"
   );
 };
-
 const sendNewYorkSession = (chatId) => {
   bot.sendMessage(chatId, 
     "🇺🇸 Sesi New York Dimulai!\n\n" +
@@ -296,540 +280,551 @@ const sendNewYorkSession = (chatId) => {
     "Selamat bertrading! 🚀"
   );
 };
-
-// Bot handlers
-bot.onText(/\/start/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 
-    "🤖 Bot Trading Aktif!\n\n" +
-    "Fitur:\n" +
-    "- Anti-spam otomatis\n" +
-    "- Welcome member baru\n" +
-    "- Mute member (/mute)\n" +
-    "- Ban member (/ban)\n" +
-    "- Berita otomatis jam 9 pagi\n" +
-    "- Notifikasi sesi trading\n\n" +
-    "Gunakan /help untuk bantuan"
-  );
-});
-
-bot.onText(/\/help/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 
-    "📋 Panduan Bot:\n\n" +
-    "🔧 Perintah Admin:\n" +
-    "/mute - Balas pesan user atau sebut username untuk mute 10 menit\n" +
-    "/ban - Balas pesan user atau sebut username untuk ban\n" +
-    "/allowgroup - Tambah grup saat ini ke daftar izin\n" +
-    "/removegroup <group_id> - Hapus grup dari daftar izin\n" +
-    "/listgroups - Lihat daftar grup yang diizinkan\n" +
-    "/groupid - Tampilkan ID grup saat ini\n" +
-    "/news - Kirim berita terkini (manual)\n" +
-    "/session <nama_sesi> - Kirim notifikasi pembukaan sesi\n\n" +
-    "🛡️ Fitur Otomatis:\n" +
-    "- Hapus spam/promosi/link dan mute 10 menit\n" +
-    "- Welcome member baru\n" +
-    "- Sapaan selamat pagi jam 7 WIB\n" +
-    "- Berita forex/saham/USD jam 9 pagi\n" +
-    "- Notifikasi sesi trading\n\n" +
-    "💡 Contoh penggunaan /session:\n" +
-    "/session sydney\n" +
-    "/session tokyo\n" +
-    "/session london\n" +
-    "/session newyork"
-  );
-});
-
-// Allow group command - MODIFIED FOR VERCEL
-bot.onText(/\/allowgroup/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
+// Fungsi untuk mengirim pesan pagi
+async function sendMorningMessage() {
+  console.log('Sending good morning message...');
   
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  if (config.allowedGroupIds.includes(chatId)) {
-    bot.sendMessage(chatId, "⚠️ Grup ini sudah ada di daftar izin!");
-    return;
-  }
-  
-  // Add to config (in memory only for Vercel)
-  config.allowedGroupIds.push(chatId);
-  
-  // For persistence in Vercel, you would need to use a database
-  // For now, we'll just acknowledge the addition
-  bot.sendMessage(chatId, `✅ Grup ini telah ditambahkan ke daftar izin!\nID Grup: ${chatId}\n\n⚠️ Catatan: Perubahan hanya disimpan di memori dan akan hilang saat redeploy.`);
-});
-
-// Remove group command - MODIFIED FOR VERCEL
-bot.onText(/\/removegroup (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const groupId = parseInt(match[1]);
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  if (isNaN(groupId)) {
-    bot.sendMessage(chatId, "❌ ID grup harus berupa angka!");
-    return;
-  }
-  
-  const index = config.allowedGroupIds.indexOf(groupId);
-  if (index !== -1) {
-    config.allowedGroupIds.splice(index, 1);
-    bot.sendMessage(chatId, `✅ Grup dengan ID ${groupId} telah dihapus dari daftar izin!\n\n⚠️ Catatan: Perubahan hanya disimpan di memori dan akan hilang saat redeploy.`);
-  } else {
-    bot.sendMessage(chatId, `⚠️ Grup dengan ID ${groupId} tidak ada di daftar izin!`);
-  }
-});
-
-// List groups command
-bot.onText(/\/listgroups/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  if (config.allowedGroupIds.length > 0) {
-    const groupsText = config.allowedGroupIds.map(id => `• ${id}`).join('\n');
-    bot.sendMessage(chatId, `📝 Grup yang diizinkan:\n${groupsText}`);
-  } else {
-    bot.sendMessage(chatId, "📝 Tidak ada grup di daftar izin");
-  }
-});
-
-// Group ID command
-bot.onText(/\/groupid/, (msg) => {
-  const chatId = msg.chat.id;
-  bot.sendMessage(chatId, `🆔 ID Grup ini: ${chatId}`, { parse_mode: 'Markdown' });
-});
-
-// Test individual USD feeds
-bot.onText(/\/testusd/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  // Multiple USD feed options to test
-  const usdFeeds = [
-    { name: 'Yahoo Finance USD', url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US' },
-    { name: 'FXStreet', url: 'https://www.fxstreet.com/rss/news' },
-    { name: 'DailyFX', url: 'https://www.dailyfx.com/rss' },
-    { name: 'ForexLive', url: 'https://www.forexlive.com/rss' },
-    { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' },
-    { name: 'CNN Money', url: 'https://rss.cnn.com/rss/money_news_international.rss' },
-    { name: 'Bloomberg', url: 'https://www.bloomberg.com/feed' },
-    { name: 'Investing.com USD', url: 'https://www.investing.com/rss/news_19.rss' }
-  ];
-  
-  let testResults = "🧪 Hasil Test USD Feeds:\n\n";
-  
-  for (const feed of usdFeeds) {
+  for (const chatId of config.allowedGroupIds) {
     try {
-      console.log(`Testing ${feed.name}: ${feed.url}`);
-      await parser.parseURL(feed.url);
-      testResults += `✅ ${feed.name}: BERHASIL\n`;
+      await bot.sendMessage(chatId, 
+        "🌅 Selamat pagi teman-teman!\n\n" +
+        "Semoga hari ini penuh berkah dan profit yang konsisten! 💰\n\n" +
+        "Jangan lupa untuk selalu mengikuti rencana trading dan manajemen risiko yang baik. 📊"
+      );
+      console.log(`Morning message sent to chat ${chatId}`);
     } catch (error) {
-      testResults += `❌ ${feed.name}: GAGAL (${error.message})\n`;
+      console.error(`Error sending morning message to ${chatId}:`, error);
     }
   }
-  
-  bot.sendMessage(chatId, testResults);
-});
+}
 
-// Simple news command for testing individual feeds
-bot.onText(/\/testnews (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const feedType = match[1].toLowerCase();
+// Fungsi untuk mengirim berita
+async function sendScheduledNews() {
+  console.log('Sending scheduled news...');
   
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  const testFeeds = {
-    forex: 'https://www.investing.com/rss/news.rss',
-    saham: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=^GSPC&region=US&lang=en-US',
-    usd: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US'
-  };
-  
-  if (!testFeeds[feedType]) {
-    bot.sendMessage(chatId, "❌ Feed type tidak valid. Gunakan: forex, saham, atau usd");
-    return;
-  }
-  
-  try {
-    bot.sendMessage(chatId, `🧪 Menguji ${feedType} feed...`);
-    const feed = await parser.parseURL(testFeeds[feedType]);
-    const news = feed.items.slice(0, 3).map(item => `📰 ${item.title}\n${item.link}`).join('\n\n');
-    await bot.sendMessage(chatId, `✅ ${feedType.toUpperCase()} Feed berhasil:\n\n${news}`, {
-      disable_web_page_preview: true
-    });
-  } catch (error) {
-    bot.sendMessage(chatId, `❌ Gagal mengambil ${feedType} feed: ${error.message}`);
-  }
-});
-
-// Manual news command - SINGLE VERSION
-bot.onText(/\/news/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  // Check if group is allowed
-  if (!isAllowedGroup(chatId)) {
-    bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
-    return;
-  }
-  
-  // Try the alternative news function with working feeds
-  await sendNewsAlternative(chatId);
-});
-
-// Add command to check RSS feed configuration
-bot.onText(/\/checkfeeds/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  let feedStatus = "📊 Status RSS Feeds:\n\n";
-  
-  if (config.rssFeeds) {
-    feedStatus += "🔹 Konfigurasi saat ini:\n";
-    feedStatus += `Forex: ${config.rssFeeds.forex || 'Tidak diatur'}\n`;
-    feedStatus += `Saham: ${config.rssFeeds.saham || 'Tidak diatur'}\n`;
-    feedStatus += `USD: ${config.rssFeeds.usd || 'Tidak diatur'}\n\n`;
-  } else {
-    feedStatus += "❌ Tidak ada konfigurasi RSS feeds di config.json\n\n";
-  }
-  
-  feedStatus += "💡 Tips:\n";
-  feedStatus += "• Gunakan /testnews forex untuk mengetes feed forex\n";
-  feedStatus += "• Gunakan /testnews saham untuk mengetes feed saham\n";
-  feedStatus += "• Gunakan /testnews usd untuk mengetes feed USD\n";
-  feedStatus += "• Gunakan /testusd untuk mengetes semua feed USD\n";
-  feedStatus += "• Pastikan URL feed valid dan dapat diakses";
-  
-  bot.sendMessage(chatId, feedStatus);
-});
-
-// Manual session command - FIXED VERSION
-bot.onText(/\/session(.*)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  const sessionParam = match[1] ? match[1].trim().toLowerCase() : '';
-  
-  console.log(`Session command triggered. User: ${userId}, Chat: ${chatId}, Param: "${sessionParam}"`);
-  
-  // Check if user is admin
-  const adminCheck = await isAdmin(chatId, userId);
-  console.log(`Admin check: ${adminCheck}`);
-  
-  if (!adminCheck) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  // Check if group is allowed
-  const groupAllowed = isAllowedGroup(chatId);
-  console.log(`Group allowed: ${groupAllowed}`);
-  
-  if (!groupAllowed) {
-    bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
-    return;
-  }
-  
-  // If no session parameter provided, show help
-  if (!sessionParam) {
-    bot.sendMessage(chatId, 
-      "📋 Sesi Trading yang tersedia:\n\n" +
-      "• /session sydney - Sesi Sydney\n" +
-      "• /session tokyo - Sesi Tokyo\n" +
-      "• /session london - Sesi London\n" +
-      "• /session newyork - Sesi New York\n\n" +
-      "Silakan pilih sesi yang ingin dikirim!"
-    );
-    return;
-  }
-  
-  console.log(`Processing session: ${sessionParam}`);
-  
-  try {
-    switch (sessionParam) {
-      case 'sydney':
-        console.log('Sending Sydney session notification');
-        await bot.sendMessage(chatId, 
-          "🇦🇺 Sesi Sydney Dimulai!\n\n" +
-          "Waktu: 05:00 - 14:00 WIB\n" +
-          "Fokus: AUD, NZD pairs\n\n" +
-          "Selamat bertrading! 🚀"
-        );
-        break;
-      case 'tokyo':
-        console.log('Sending Tokyo session notification');
-        await bot.sendMessage(chatId, 
-          "🇯🇵 Sesi Tokyo Dimulai!\n\n" +
-          "Waktu: 07:00 - 16:00 WIB\n" +
-          "Fokus: JPY pairs\n\n" +
-          "Selamat bertrading! 🚀"
-        );
-        break;
-      case 'london':
-        console.log('Sending London session notification');
-        await bot.sendMessage(chatId, 
-          "🇬🇧 Sesi London Dimulai!\n\n" +
-          "Waktu: 13:00 - 22:00 WIB\n" +
-          "Fokus: EUR, GBP pairs\n\n" +
-          "Selamat bertrading! 🚀"
-        );
-        break;
-      case 'newyork':
-      case 'new york':
-        console.log('Sending New York session notification');
-        await bot.sendMessage(chatId, 
-          "🇺🇸 Sesi New York Dimulai!\n\n" +
-          "Waktu: 20:00 - 05:00 WIB (esoknya)\n" +
-          "Fokus: USD, CAD pairs\n\n" +
-          "Selamat bertrading! 🚀"
-        );
-        break;
-      default:
-        console.log(`Unknown session: ${sessionParam}`);
-        bot.sendMessage(chatId, 
-          "❌ Sesi tidak dikenal: " + sessionParam + "\n\n" +
-          "Sesi yang tersedia:\n" +
-          "• sydney\n" +
-          "• tokyo\n" +
-          "• london\n" +
-          "• newyork\n\n" +
-          "Contoh: /session sydney"
-        );
+  for (const chatId of config.allowedGroupIds) {
+    try {
+      await sendNewsAlternative(chatId);
+      console.log(`News sent to chat ${chatId}`);
+    } catch (error) {
+      console.error(`Error sending news to ${chatId}:`, error);
     }
-  } catch (error) {
-    console.error('Error sending session notification:', error);
-    bot.sendMessage(chatId, "❌ Terjadi kesalahan saat mengirim notifikasi sesi.");
   }
-});
+}
 
-// Also add a simple handler for just /session without parameters
-bot.onText(/^\/session$/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
+// Fungsi untuk mengirim notifikasi sesi
+async function sendSessionNotification(sessionType) {
+  console.log(`Sending ${sessionType} session notification...`);
   
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
+  for (const chatId of config.allowedGroupIds) {
+    try {
+      switch (sessionType) {
+        case 'sydney':
+          await bot.sendMessage(chatId, 
+            "🇦🇺 Sesi Sydney Dimulai!\n\n" +
+            "Waktu: 05:00 - 14:00 WIB\n" +
+            "Fokus: AUD, NZD pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+          break;
+        case 'tokyo':
+          await bot.sendMessage(chatId, 
+            "🇯🇵 Sesi Tokyo Dimulai!\n\n" +
+            "Waktu: 07:00 - 16:00 WIB\n" +
+            "Fokus: JPY pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+          break;
+        case 'london':
+          await bot.sendMessage(chatId, 
+            "🇬🇧 Sesi London Dimulai!\n\n" +
+            "Waktu: 13:00 - 22:00 WIB\n" +
+            "Fokus: EUR, GBP pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+          break;
+        case 'newyork':
+          await bot.sendMessage(chatId, 
+            "🇺🇸 Sesi New York Dimulai!\n\n" +
+            "Waktu: 20:00 - 05:00 WIB (esoknya)\n" +
+            "Fokus: USD, CAD pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+          break;
+      }
+      console.log(`${sessionType} session notification sent to chat ${chatId}`);
+    } catch (error) {
+      console.error(`Error sending ${sessionType} session notification to ${chatId}:`, error);
+    }
   }
-  
-  bot.sendMessage(chatId, 
-    "📋 Sesi Trading yang tersedia:\n\n" +
-    "• /session sydney - Sesi Sydney\n" +
-    "• /session tokyo - Sesi Tokyo\n" +
-    "• /session london - Sesi London\n" +
-    "• /session newyork - Sesi New York\n\n" +
-    "Silakan pilih sesi yang ingin dikirim!"
-  );
-});
+}
 
-// Mute command
-bot.onText(/\/mute/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
+// Process message function
+async function processMessage(message) {
+  const chatId = message.chat.id;
+  const userId = message.from.id;
+  const text = message.text;
+  const caption = message.caption;
   
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
+  console.log(`Processing message from ${userId} in chat ${chatId}: ${text || caption}`);
   
-  let targetUserId;
-  let targetUsername;
+  // Skip if message is from bot
+  if (message.from.is_bot) return;
   
-  if (msg.reply_to_message) {
-    targetUserId = msg.reply_to_message.from.id;
-    targetUsername = msg.reply_to_message.from.username || `User_${msg.reply_to_message.from.id}`;
-  } else if (msg.text.includes('@')) {
-    const usernameMatch = msg.text.match(/@(\w+)/);
-    if (usernameMatch) {
-      targetUsername = usernameMatch[1];
-      // Get user ID from username (requires additional API call)
-      try {
-        const chatMembers = await bot.getChatAdministrators(chatId);
-        const admin = chatMembers.find(member => member.user.username === targetUsername);
-        if (admin) {
-          targetUserId = admin.user.id;
-        } else {
-          bot.sendMessage(chatId, "❌ User tidak ditemukan di grup ini!");
-          return;
-        }
-      } catch (error) {
-        console.error('Error finding user by username:', error);
-        bot.sendMessage(chatId, "❌ Gagal menemukan user!");
-        return;
+  // Handle new chat members
+  if (message.new_chat_members && message.new_chat_members.length > 0) {
+    console.log(`New chat members event in chat ${chatId}`);
+    
+    for (const member of message.new_chat_members) {
+      if (!member.is_bot) {
+        const username = member.username || `User_${member.id}`;
+        const welcomeText = 
+          `🎉 Selamat datang di grup kami, @${username}!\n\n` +
+          `📌 Silakan baca peraturan grup:\n` +
+          `1. Dilarang spam/promosi tanpa izin admin\n` +
+          `2. Hormati semua anggota\n` +
+          `3. Gunakan bahasa yang sopan\n\n` +
+          `Jika ada pertanyaan, hubungi admin!`;
+        
+        await bot.sendMessage(chatId, welcomeText, { parse_mode: 'HTML' });
+        console.log(`Welcome message sent to @${username} in chat ${chatId}`);
       }
     }
-  } else {
-    bot.sendMessage(chatId, "❌ Balas pesan user yang ingin di-mute atau sebut username dengan format /mute @username");
-    return;
+    return; // No need to check for spam in system messages
   }
   
-  try {
-    await muteUser(chatId, targetUserId);
-    bot.sendMessage(chatId, `✅ @${targetUsername} telah di-mute selama 10 menit!`);
-    // Delete the command message
-    deleteMessage(chatId, msg.message_id);
-  } catch (error) {
-    console.error('Error muting user:', error);
-    bot.sendMessage(chatId, `❌ Gagal mute user: ${error.message}`);
-  }
-});
-
-// Ban command
-bot.onText(/\/ban/, async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  if (!await isAdmin(chatId, userId)) {
-    bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
-    return;
-  }
-  
-  let targetUserId;
-  let targetUsername;
-  
-  if (msg.reply_to_message) {
-    targetUserId = msg.reply_to_message.from.id;
-    targetUsername = msg.reply_to_message.from.username || `User_${msg.reply_to_message.from.id}`;
-  } else if (msg.text.includes('@')) {
-    const usernameMatch = msg.text.match(/@(\w+)/);
-    if (usernameMatch) {
-      targetUsername = usernameMatch[1];
-      // Get user ID from username (requires additional API call)
-      try {
-        const chatMembers = await bot.getChatAdministrators(chatId);
-        const admin = chatMembers.find(member => member.user.username === targetUsername);
-        if (admin) {
-          targetUserId = admin.user.id;
+  // Handle commands
+  if (text && text.startsWith('/')) {
+    const command = text.split(' ')[0].toLowerCase();
+    
+    switch (command) {
+      case '/start':
+        await bot.sendMessage(chatId, 
+          "🤖 Bot Trading Aktif!\n\n" +
+          "Fitur:\n" +
+          "- Anti-spam otomatis\n" +
+          "- Welcome member baru\n" +
+          "- Mute member (/mute)\n" +
+          "- Ban member (/ban)\n" +
+          "- Berita otomatis jam 9 pagi\n" +
+          "- Notifikasi sesi trading\n\n" +
+          "Gunakan /help untuk bantuan"
+        );
+        break;
+        
+      case '/help':
+        await bot.sendMessage(chatId, 
+          "📋 Panduan Bot:\n\n" +
+          "🔧 Perintah Admin:\n" +
+          "/mute - Balas pesan user atau sebut username untuk mute 10 menit\n" +
+          "/ban - Balas pesan user atau sebut username untuk ban\n" +
+          "/allowgroup - Tambah grup saat ini ke daftar izin\n" +
+          "/removegroup <group_id> - Hapus grup dari daftar izin\n" +
+          "/listgroups - Lihat daftar grup yang diizinkan\n" +
+          "/groupid - Tampilkan ID grup saat ini\n" +
+          "/news - Kirim berita terkini (manual)\n" +
+          "/session <nama_sesi> - Kirim notifikasi pembukaan sesi\n\n" +
+          "🛡️ Fitur Otomatis:\n" +
+          "- Hapus spam/promosi/link dan mute 10 menit\n" +
+          "- Welcome member baru\n" +
+          "- Sapaan selamat pagi jam 7 WIB\n" +
+          "- Berita forex/saham/USD jam 9 pagi\n" +
+          "- Notifikasi sesi trading\n\n" +
+          "💡 Contoh penggunaan /session:\n" +
+          "/session sydney\n" +
+          "/session tokyo\n" +
+          "/session london\n" +
+          "/session newyork"
+        );
+        break;
+        
+      case '/groupid':
+        await bot.sendMessage(chatId, `🆔 ID Grup ini: ${chatId}`, { parse_mode: 'Markdown' });
+        break;
+        
+      case '/allowgroup':
+        if (await isAdmin(chatId, userId)) {
+          if (config.allowedGroupIds.includes(chatId)) {
+            await bot.sendMessage(chatId, "⚠️ Grup ini sudah ada di daftar izin!");
+          } else {
+            config.allowedGroupIds.push(chatId);
+            await bot.sendMessage(chatId, `✅ Grup ini telah ditambahkan ke daftar izin!\nID Grup: ${chatId}\n\n⚠️ Catatan: Perubahan hanya disimpan di memori dan akan hilang saat redeploy.`);
+          }
         } else {
-          bot.sendMessage(chatId, "❌ User tidak ditemukan di grup ini!");
-          return;
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
         }
-      } catch (error) {
-        console.error('Error finding user by username:', error);
-        bot.sendMessage(chatId, "❌ Gagal menemukan user!");
-        return;
-      }
+        break;
+        
+      case '/listgroups':
+        if (await isAdmin(chatId, userId)) {
+          if (config.allowedGroupIds.length > 0) {
+            const groupsText = config.allowedGroupIds.map(id => `• ${id}`).join('\n');
+            await bot.sendMessage(chatId, `📝 Grup yang diizinkan:\n${groupsText}`);
+          } else {
+            await bot.sendMessage(chatId, "📝 Tidak ada grup di daftar izin");
+          }
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
+        
+      case '/news':
+        if (await isAdmin(chatId, userId)) {
+          if (!isAllowedGroup(chatId)) {
+            await bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+          } else {
+            await sendNewsAlternative(chatId);
+          }
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
+        
+      case '/testusd':
+        if (await isAdmin(chatId, userId)) {
+          const usdFeeds = [
+            { name: 'Yahoo Finance USD', url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=USD&region=US&lang=en-US' },
+            { name: 'FXStreet', url: 'https://www.fxstreet.com/rss/news' },
+            { name: 'DailyFX', url: 'https://www.dailyfx.com/rss' },
+            { name: 'ForexLive', url: 'https://www.forexlive.com/rss' },
+            { name: 'Reuters Business', url: 'https://feeds.reuters.com/reuters/businessNews' }
+          ];
+          
+          let testResults = "🧪 Hasil Test USD Feeds:\n\n";
+          
+          for (const feed of usdFeeds) {
+            try {
+              await parser.parseURL(feed.url);
+              testResults += `✅ ${feed.name}: BERHASIL\n`;
+            } catch (error) {
+              testResults += `❌ ${feed.name}: GAGAL\n`;
+            }
+          }
+          
+          await bot.sendMessage(chatId, testResults);
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
+        
+      case '/session':
+        if (await isAdmin(chatId, userId)) {
+          if (!isAllowedGroup(chatId)) {
+            await bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+          } else {
+            await bot.sendMessage(chatId, 
+              "📋 Sesi Trading yang tersedia:\n\n" +
+              "• /session sydney - Sesi Sydney\n" +
+              "• /session tokyo - Sesi Tokyo\n" +
+              "• /session london - Sesi London\n" +
+              "• /session newyork - Sesi New York\n\n" +
+              "Silakan pilih sesi yang ingin dikirim!"
+            );
+          }
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
+        
+      case '/session sydney':
+        if (await isAdmin(chatId, userId) && isAllowedGroup(chatId)) {
+          await bot.sendMessage(chatId, 
+            "🇦🇺 Sesi Sydney Dimulai!\n\n" +
+            "Waktu: 05:00 - 14:00 WIB\n" +
+            "Fokus: AUD, NZD pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+        } else if (!await isAdmin(chatId, userId)) {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        } else {
+          await bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+        }
+        break;
+        
+      case '/session tokyo':
+        if (await isAdmin(chatId, userId) && isAllowedGroup(chatId)) {
+          await bot.sendMessage(chatId, 
+            "🇯🇵 Sesi Tokyo Dimulai!\n\n" +
+            "Waktu: 07:00 - 16:00 WIB\n" +
+            "Fokus: JPY pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+        } else if (!await isAdmin(chatId, userId)) {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        } else {
+          await bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+        }
+        break;
+        
+      case '/session london':
+        if (await isAdmin(chatId, userId) && isAllowedGroup(chatId)) {
+          await bot.sendMessage(chatId, 
+            "🇬🇧 Sesi London Dimulai!\n\n" +
+            "Waktu: 13:00 - 22:00 WIB\n" +
+            "Fokus: EUR, GBP pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+        } else if (!await isAdmin(chatId, userId)) {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        } else {
+          await bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+        }
+        break;
+        
+      case '/session newyork':
+        if (await isAdmin(chatId, userId) && isAllowedGroup(chatId)) {
+          await bot.sendMessage(chatId, 
+            "🇺🇸 Sesi New York Dimulai!\n\n" +
+            "Waktu: 20:00 - 05:00 WIB (esoknya)\n" +
+            "Fokus: USD, CAD pairs\n\n" +
+            "Selamat bertrading! 🚀"
+          );
+        } else if (!await isAdmin(chatId, userId)) {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        } else {
+          await bot.sendMessage(chatId, "❌ Grup ini tidak diizinkan! Gunakan /allowgroup terlebih dahulu.");
+        }
+        break;
+        
+      case '/mute':
+        if (await isAdmin(chatId, userId)) {
+          let targetUserId;
+          let targetUsername;
+          
+          if (message.reply_to_message) {
+            targetUserId = message.reply_to_message.from.id;
+            targetUsername = message.reply_to_message.from.username || `User_${message.reply_to_message.from.id}`;
+          } else if (text.includes('@')) {
+            const usernameMatch = text.match(/@(\w+)/);
+            if (usernameMatch) {
+              targetUsername = usernameMatch[1];
+              try {
+                const chatMembers = await bot.getChatAdministrators(chatId);
+                const admin = chatMembers.find(member => member.user.username === targetUsername);
+                if (admin) {
+                  targetUserId = admin.user.id;
+                } else {
+                  await bot.sendMessage(chatId, "❌ User tidak ditemukan di grup ini!");
+                  return;
+                }
+              } catch (error) {
+                console.error('Error finding user by username:', error);
+                await bot.sendMessage(chatId, "❌ Gagal menemukan user!");
+                return;
+              }
+            }
+          } else {
+            await bot.sendMessage(chatId, "❌ Balas pesan user yang ingin di-mute atau sebut username dengan format /mute @username");
+            return;
+          }
+          
+          try {
+            await muteUser(chatId, targetUserId);
+            await bot.sendMessage(chatId, `✅ @${targetUsername} telah di-mute selama 10 menit!`);
+            await deleteMessage(chatId, message.message_id);
+          } catch (error) {
+            console.error('Error muting user:', error);
+            await bot.sendMessage(chatId, `❌ Gagal mute user: ${error.message}`);
+          }
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
+        
+      case '/ban':
+        if (await isAdmin(chatId, userId)) {
+          let targetUserId;
+          let targetUsername;
+          
+          if (message.reply_to_message) {
+            targetUserId = message.reply_to_message.from.id;
+            targetUsername = message.reply_to_message.from.username || `User_${message.reply_to_message.from.id}`;
+          } else if (text.includes('@')) {
+            const usernameMatch = text.match(/@(\w+)/);
+            if (usernameMatch) {
+              targetUsername = usernameMatch[1];
+              try {
+                const chatMembers = await bot.getChatAdministrators(chatId);
+                const admin = chatMembers.find(member => member.user.username === targetUsername);
+                if (admin) {
+                  targetUserId = admin.user.id;
+                } else {
+                  await bot.sendMessage(chatId, "❌ User tidak ditemukan di grup ini!");
+                  return;
+                }
+              } catch (error) {
+                console.error('Error finding user by username:', error);
+                await bot.sendMessage(chatId, "❌ Gagal menemukan user!");
+                return;
+              }
+            }
+          } else {
+            await bot.sendMessage(chatId, "❌ Balas pesan user yang ingin di-ban atau sebut username dengan format /ban @username");
+            return;
+          }
+          
+          try {
+            await banUser(chatId, targetUserId);
+            await bot.sendMessage(chatId, `✅ @${targetUsername} telah di-ban!`);
+            await deleteMessage(chatId, message.message_id);
+          } catch (error) {
+            console.error('Error banning user:', error);
+            await bot.sendMessage(chatId, `❌ Gagal ban user: ${error.message}`);
+          }
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
+        
+      case '/runtasks':
+        if (await isAdmin(chatId, userId)) {
+          await bot.sendMessage(chatId, "🔄 Menjalankan semua scheduled tasks...");
+          
+          // Run all tasks
+          await sendMorningMessage();
+          await sendScheduledNews();
+          await sendSessionNotification('sydney');
+          await sendSessionNotification('tokyo');
+          await sendSessionNotification('london');
+          await sendSessionNotification('newyork');
+          
+          await bot.sendMessage(chatId, "✅ Semua scheduled tasks telah dijalankan!");
+        } else {
+          await bot.sendMessage(chatId, "❌ Hanya admin yang bisa menggunakan perintah ini!");
+        }
+        break;
     }
-  } else {
-    bot.sendMessage(chatId, "❌ Balas pesan user yang ingin di-ban atau sebut username dengan format /ban @username");
-    return;
   }
-  
-  try {
-    await banUser(chatId, targetUserId);
-    bot.sendMessage(chatId, `✅ @${targetUsername} telah di-ban!`);
-    // Delete the command message
-    deleteMessage(chatId, msg.message_id);
-  } catch (error) {
-    console.error('Error banning user:', error);
-    bot.sendMessage(chatId, `❌ Gagal ban user: ${error.message}`);
-  }
-});
-
-// Handle new chat members (welcome)
-bot.on('new_chat_members', async (msg) => {
-  const chatId = msg.chat.id;
-  
-  for (const member of msg.new_chat_members) {
-    if (!member.is_bot) {
-      const username = member.username || `User_${member.id}`;
-      const welcomeText = 
-        `🎉 Selamat datang di grup kami, @${username}!\n\n` +
-        `📌 Silakan baca peraturan grup:\n` +
-        `1. Dilarang spam/promosi tanpa izin admin\n` +
-        `2. Hormati semua anggota\n` +
-        `3. Gunakan bahasa yang sopan\n\n` +
-        `Jika ada pertanyaan, hubungi admin!`;
+  // Handle spam detection for non-command messages
+  else if (text || caption) {
+    const messageText = text || caption;
+    
+    console.log(`Checking for spam in message: ${messageText}`);
+    
+    // Skip if in private chat
+    if (chatId === userId) {
+      console.log(`Skipping spam check for private chat ${chatId}`);
+      return;
+    }
+    
+    // Check if group is allowed
+    if (!isAllowedGroup(chatId)) {
+      console.log(`Skipping spam check for non-allowed group ${chatId}`);
+      return;
+    }
+    
+    // Skip if user is admin
+    const isAdminUser = await isAdmin(chatId, userId);
+    if (isAdminUser) {
+      console.log(`Skipping spam check for admin user ${userId} in chat ${chatId}`);
+      return;
+    }
+    
+    // Check for spam
+    const isSpam = detectSpam(messageText);
+    console.log(`Spam detection result for message: ${isSpam}`);
+    
+    if (isSpam) {
+      console.log(`Deleting spam message ${message.message_id} from user ${userId} in chat ${chatId}`);
       
-      bot.sendMessage(chatId, welcomeText, { parse_mode: 'HTML' });
+      // Delete the message
+      try {
+        await deleteMessage(chatId, message.message_id);
+        console.log(`Message ${message.message_id} deleted successfully`);
+      } catch (error) {
+        console.error(`Error deleting message ${message.message_id}:`, error);
+      }
+      
+      // Mute the user for 10 minutes
+      try {
+        await muteUser(chatId, userId);
+        console.log(`User ${userId} muted successfully`);
+      } catch (error) {
+        console.error(`Error muting user ${userId}:`, error);
+      }
+      
+      // Send warning
+      const username = message.from.username || `User_${message.from.id}`;
+      try {
+        await bot.sendMessage(chatId, 
+          `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
+          `Alasan: Mengandung promosi/link/spam\n\n` +
+          `📌 Peraturan grup:\n` +
+          `• Dilarang promosi grup lain\n` +
+          `• Dilarang posting link tanpa izin admin\n` +
+          `• Hormati semua anggota grup`
+        );
+        console.log(`Warning message sent to chat ${chatId}`);
+      } catch (error) {
+        console.error(`Error sending warning message:`, error);
+      }
     }
   }
-});
+}
 
-// Handle all messages for spam detection
-bot.on('message', async (msg) => {
-  const chatId = msg.chat.id;
-  const userId = msg.from.id;
-  
-  // Skip if message is from bot or in private chat
-  if (msg.from.is_bot || chatId === userId) {
-    return;
-  }
-  
-  // Check if group is allowed
-  if (!isAllowedGroup(chatId)) {
-    return;
-  }
-  
-  // Skip if user is admin
-  if (await isAdmin(chatId, userId)) {
-    return;
-  }
-  
-  // Check for spam/promo/link
-  let text = msg.text;
-  if (msg.caption) {
-    text = msg.caption;
-  }
-  
-  if (detectSpam(text)) {
-    // Delete the message
-    deleteMessage(chatId, msg.message_id);
-    
-    // Mute the user for 10 minutes
-    muteUser(chatId, userId);
-    
-    // Send warning
-    const username = msg.from.username || `User_${msg.from.id}`;
-    bot.sendMessage(chatId, 
-      `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
-      `Alasan: Mengandung promosi/link/spam\n\n` +
-      `📌 Peraturan grup:\n` +
-      `• Dilarang promosi grup lain\n` +
-      `• Dilarang posting link tanpa izin admin\n` +
-      `• Hormati semua anggota grup`
-    );
-  }
-});
-
-// Webhook handler untuk Vercel - IMPROVED
+// Webhook handler untuk Vercel - FIXED VERSION
 module.exports = async (req, res) => {
   console.log('Webhook received:', JSON.stringify(req.body, null, 2));
   
   try {
     // Handle update dari Telegram
     if (req.body) {
-      await bot.handleUpdate(req.body);
+      const update = req.body;
+      
+      // Process message
+      if (update.message) {
+        await processMessage(update.message);
+      }
+      // Process edited message
+      else if (update.edited_message) {
+        await processMessage(update.edited_message);
+      }
+      // Process new chat members (using chat_member event)
+      else if (update.chat_member) {
+        const chatMember = update.chat_member;
+        if (chatMember.old_chat_member.user.is_bot === false && 
+            chatMember.new_chat_member.status === 'member') {
+          await processMessage({
+            chat: chatMember.chat,
+            new_chat_members: [chatMember.new_chat_member]
+          });
+        }
+      }
+      // Process my_chat_member event
+      else if (update.my_chat_member) {
+        const chatMember = update.my_chat_member;
+        if (chatMember.old_chat_member.user.is_bot === false && 
+            chatMember.new_chat_member.status === 'member') {
+          await processMessage({
+            chat: chatMember.chat,
+            new_chat_members: [chatMember.new_chat_member]
+          });
+        }
+      }
+    }
+    
+    // Handle scheduled tasks via query parameter
+    if (req.query.task) {
+      switch (req.query.task) {
+        case 'morning':
+          await sendMorningMessage();
+          return res.status(200).send('Morning message sent');
+        case 'news':
+          await sendScheduledNews();
+          return res.status(200).send('News sent');
+        case 'sydney':
+          await sendSessionNotification('sydney');
+          return res.status(200).send('Sydney session notification sent');
+        case 'tokyo':
+          await sendSessionNotification('tokyo');
+          return res.status(200).send('Tokyo session notification sent');
+        case 'london':
+          await sendSessionNotification('london');
+          return res.status(200).send('London session notification sent');
+        case 'newyork':
+          await sendSessionNotification('newyork');
+          return res.status(200).send('New York session notification sent');
+      }
     }
     
     res.status(200).send('OK');
