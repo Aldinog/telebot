@@ -321,33 +321,33 @@ async function sendSessionNotification(sessionType) {
       switch (sessionType) {
         case 'sydney':
           await bot.sendMessage(chatId, 
-            "🇦🇺 Sesi Sydney Dimulai!\n\n" +
+            "🇦🇺 Sesi Sydney Dimulai❗❗\n\n" +
             "Waktu: 05:00 - 14:00 WIB\n" +
-            "Fokus: AUD, NZD pairs\n\n" +
+            
             "Selamat bertrading! 🚀"
           );
           break;
         case 'tokyo':
           await bot.sendMessage(chatId, 
-            "🇯🇵 Sesi Tokyo Dimulai!\n\n" +
+            "🇯🇵 Sesi Tokyo Dimulai❗❗\n\n" +
             "Waktu: 07:00 - 16:00 WIB\n" +
-            "Fokus: JPY pairs\n\n" +
+            
             "Selamat bertrading! 🚀"
           );
           break;
         case 'london':
           await bot.sendMessage(chatId, 
-            "🇬🇧 Sesi London Dimulai!\n\n" +
+            "🇬🇧 Sesi London Dimulai❗❗\n\n" +
             "Waktu: 13:00 - 22:00 WIB\n" +
-            "Fokus: EUR, GBP pairs\n\n" +
+            
             "Selamat bertrading! 🚀"
           );
           break;
         case 'newyork':
           await bot.sendMessage(chatId, 
-            "🇺🇸 Sesi New York Dimulai!\n\n" +
-            "Waktu: 20:00 - 05:00 WIB (esoknya)\n" +
-            "Fokus: USD, CAD pairs\n\n" +
+            "🇺🇸 Sesi New York Dimulai❗❗\n\n" +
+            "Waktu: 20:00 - 05:00 WIB\n" +
+            
             "Selamat bertrading! 🚀"
           );
           break;
@@ -379,11 +379,10 @@ async function processMessage(message) {
       if (!member.is_bot) {
         const username = member.username || `User_${member.id}`;
         const welcomeText = 
-          `🎉 Selamat datang di grup kami, @${username}!\n\n` +
+          `🎉 Halo,${username}❗ Selamat datang di grup GhautamaFX, \n\n` +
           `📌 Silakan baca peraturan grup:\n` +
           `1. Dilarang spam/promosi tanpa izin admin\n` +
-          `2. Hormati semua anggota\n` +
-          `3. Gunakan bahasa yang sopan\n\n` +
+          `2. Respect ke semua anggota\n` +
           `Jika ada pertanyaan, hubungi admin!`;
         
         await bot.sendMessage(chatId, welcomeText, { parse_mode: 'HTML' });
@@ -398,7 +397,7 @@ async function processMessage(message) {
     const command = text.split(' ')[0].toLowerCase();
     
     switch (command) {
-      case '/start':
+      case '/gas':
         await bot.sendMessage(chatId, 
           "🤖 Bot Trading Aktif!\n\n" +
           "Fitur:\n" +
@@ -748,11 +747,8 @@ async function processMessage(message) {
       try {
         await bot.sendMessage(chatId, 
           `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
-          `Alasan: Mengandung promosi/link/spam\n\n` +
-          `📌 Peraturan grup:\n` +
-          `• Dilarang promosi grup lain\n` +
-          `• Dilarang posting link tanpa izin admin\n` +
-          `• Hormati semua anggota grup`
+          `Alasan: Mengandung promosi/link/spam\n\n` 
+          
         );
         console.log(`Warning message sent to chat ${chatId}`);
       } catch (error) {
