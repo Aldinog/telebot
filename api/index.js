@@ -321,7 +321,7 @@ async function sendSessionNotification(sessionType) {
       switch (sessionType) {
         case 'sydney':
           await bot.sendMessage(chatId, 
-            "🇦🇺 Sesi Sydney Dimulai❗❗\n\n" +
+            "🇦🇺 Sesi Sydney Dimulai❗\n\n" +
             "Waktu: 05:00 - 14:00 WIB\n" +
             
             "Selamat bertrading! 🚀"
@@ -329,7 +329,7 @@ async function sendSessionNotification(sessionType) {
           break;
         case 'tokyo':
           await bot.sendMessage(chatId, 
-            "🇯🇵 Sesi Tokyo Dimulai❗❗\n\n" +
+            "🇯🇵 Sesi Tokyo Dimulai❗\n\n" +
             "Waktu: 07:00 - 16:00 WIB\n" +
             
             "Selamat bertrading! 🚀"
@@ -337,7 +337,7 @@ async function sendSessionNotification(sessionType) {
           break;
         case 'london':
           await bot.sendMessage(chatId, 
-            "🇬🇧 Sesi London Dimulai❗❗\n\n" +
+            "🇬🇧 Sesi London Dimulai❗\n\n" +
             "Waktu: 13:00 - 22:00 WIB\n" +
             
             "Selamat bertrading! 🚀"
@@ -345,7 +345,7 @@ async function sendSessionNotification(sessionType) {
           break;
         case 'newyork':
           await bot.sendMessage(chatId, 
-            "🇺🇸 Sesi New York Dimulai❗❗\n\n" +
+            "🇺🇸 Sesi New York Dimulai❗\n\n" +
             "Waktu: 20:00 - 05:00 WIB\n" +
             
             "Selamat bertrading! 🚀"
