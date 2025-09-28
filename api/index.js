@@ -49,7 +49,7 @@ const detectSpam = (text) => {
   
   return false;
 };
-const muteUser = async (chatId, userId, durationMinutes = 10) => {
+const muteUser = async (chatId, userId, durationMinutes = 1440) => {
   try {
     await bot.restrictChatMember(chatId, userId, {
       can_send_messages: false,
@@ -619,7 +619,7 @@ async function processMessage(message) {
           
           try {
             await muteUser(chatId, targetUserId);
-            await bot.sendMessage(chatId, `✅ @${targetUsername} telah di-mute selama 10 menit!`);
+            await bot.sendMessage(chatId, `✅ @${targetUsername} telah di-mute `);
             await deleteMessage(chatId, message.message_id);
           } catch (error) {
             console.error('Error muting user:', error);
@@ -746,8 +746,8 @@ async function processMessage(message) {
       const username = message.from.username || `User_${message.from.id}`;
       try {
         await bot.sendMessage(chatId, 
-          `⚠️ @${username} pesan dihapus dan di-mute 10 menit!\n` +
-          `Alasan: Mengandung promosi/link/spam\n\n` 
+          ``
+           
           
         );
         console.log(`Warning message sent to chat ${chatId}`);
