@@ -324,7 +324,7 @@ async function sendSessionNotification(sessionType) {
             "🇦🇺 Sesi Sydney Dimulai❗\n\n" +
             "Waktu: 05:00 - 14:00 WIB\n" +
             
-            "Selamat bertrading! 🚀"
+            ""
           );
           break;
         case 'tokyo':
@@ -332,7 +332,7 @@ async function sendSessionNotification(sessionType) {
             "🇯🇵 Sesi Tokyo Dimulai❗\n\n" +
             "Waktu: 07:00 - 16:00 WIB\n" +
             
-            "Selamat bertrading! 🚀"
+            ""
           );
           break;
         case 'london':
@@ -340,7 +340,7 @@ async function sendSessionNotification(sessionType) {
             "🇬🇧 Sesi London Dimulai❗\n\n" +
             "Waktu: 13:00 - 22:00 WIB\n" +
             
-            "Selamat bertrading! 🚀"
+            ""
           );
           break;
         case 'newyork':
@@ -348,7 +348,7 @@ async function sendSessionNotification(sessionType) {
             "🇺🇸 Sesi New York Dimulai❗\n\n" +
             "Waktu: 20:00 - 05:00 WIB\n" +
             
-            "Selamat bertrading! 🚀"
+            ""
           );
           break;
       }
